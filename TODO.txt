@@ -1,0 +1,14 @@
+1.  Make it not draw more than img.width / 2 away
+    a.  store mouse
+    b.   
+
+2.  Turn image if mouse moves up and down
+
+3.  Create focus mode where current image is stopped and zoomed
+
+4.  Add more images and change animation based on mouseY height
+
+5.  Flip image when mouse is going backwards
+
+6.  Add handpose to control
+    a.  get center of hand by comparing points of palm —> draw there
