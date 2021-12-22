@@ -35,6 +35,8 @@ const init = () => {
     imageStartX,
     imageStartY = -1
 
+  let rotation = 0
+
   let myImage
 
   let focusState = false
@@ -43,10 +45,6 @@ const init = () => {
 
   const loop = (t) => {
     myImage = new Image()
-
-    // Clear the canvas
-
-    console.log(focusState)
 
     ctx.fillStyle = '#000000'
     ctx.globalAlpha = 0.2
@@ -57,14 +55,15 @@ const init = () => {
     imageStartY = pointerY - myImage.width / 2
 
     // Rotate 1 degree
-    // ctx.rotate(Math.PI / 180)
 
     if (!focusState) {
       //Save the canvas
       ctx.save()
+      ctx.rotate((rotation * Math.PI) / 180)
       ctx.drawImage(
         myImage,
-        Math.floor((pointerX - myImage.width / 2) / 140) * 140,
+        Math.floor((pointerX - myImage.width / 2) / myImage.width) *
+          myImage.width,
         pointerY - myImage.height / 2
       )
       ctx.restore()
@@ -75,15 +74,16 @@ const init = () => {
       pointerControl()
       // console.log(pointerPos)
     } else {
-      // ctx.save()
-      // ctx.drawImage(
-      //   myImage,
-      //  Math.floor( (pointerX - myImage.width / 2)/140)*140,
-      //   pointerY - myImage.height / 2,
-      //   myImage.width * 2,
-      //   myImage.height * 2
-      // )
-      // ctx.restore()
+      ctx.save()
+      ctx.drawImage(
+        myImage,
+        Math.floor((pointerX - myImage.width / 2) / myImage.width) *
+          myImage.width,
+        pointerY - myImage.height / 2,
+        myImage.width * 2,
+        myImage.height * 2
+      )
+      ctx.restore()
     }
   }
 
@@ -109,16 +109,16 @@ const init = () => {
       pointerX = e.clientX
       pointerY = e.clientY
 
-      /*
-      if (
-        e.clientX > pointerPos[0].x + myImage.width / 8 ||
-        e.clientX < pointerPos[0].x - myImage.width / 8
-      ) {
-        pointerX = pointerPos[0].x
-        pointerY = pointerPos[0].y
+      if (e.clientY > pointerPos[0].y + myImage.height / 8) {
+        console.log('true')
+        rotation++
         // console.log(pointerPos[0].x, 'it works')
+      } else if (e.clientY < pointerPos[0].y - myImage.height / 8) {
+        // console.log('true')
+        // rotation--
+      } else if (e.clientY === pointerPos[0].y) {
+        rotation = 0
       }
-      */
     })
   }
 
