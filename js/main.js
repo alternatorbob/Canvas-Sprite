@@ -5,14 +5,6 @@ const init = () => {
     canvas = document.getElementsByTagName('canvas').item(0),
     ctx = canvas.getContext('2d')
 
-  const resize = () => {
-    canvas.width = w = window.innerWidth
-    canvas.height = h = window.innerHeight
-    ctx.font = `${h * 0.157894737}px monospace`
-    ctx.textBaseline = 'hanging'
-    ctx.textAlign = 'center'
-  }
-
   const images = [
     'src/img/Leapfrog_Side/img-001.jpg',
     'src/img/Leapfrog_Side/img-002.jpg',
@@ -28,6 +20,12 @@ const init = () => {
     'src/img/Leapfrog_Side/img-012.jpg',
   ]
 
+  var handposeModel = null // this will be loaded with the handpose model
+  var videoDataLoaded = false // is webcam capture ready?
+  var statusText = 'Loading handpose model...'
+  var myHands = [] // hands detected by mediapipe
+  var capture // webcam capture, managed by p5.js
+
   let pointerX,
     pointerY,
     pointerStartX,
@@ -36,15 +34,64 @@ const init = () => {
     imageStartY = -1
 
   let rotation = 0
-
   let myImage
-
   let focusState = false
-
   let pointerPos = []
+
+  handpose.load().then(function (_model) {
+    console.log('model initialized.')
+    statusText = 'Model loaded.'
+    handposeModel = _model
+  })
+
+  var capture = document.createElement('video')
+  capture.playsinline = 'playsinline'
+  capture.autoplay = 'autoplay'
+  navigator.mediaDevices
+    .getUserMedia({ audio: false, video: true })
+    .then(function (stream) {
+      window.stream = stream
+      capture.srcObject = stream
+    })
+
+  // hide the video element
+  capture.style.position = 'absolute'
+  capture.style.opacity = 0
+  capture.style.zIndex = -100 // "send to back"
+
+  // signal when capture is ready and set size for debug canvas
+  capture.onloadeddata = function () {
+    console.log('video initialized')
+    videoDataLoaded = true
+  }
+
+  const resize = () => {
+    canvas.width = w = window.innerWidth
+    canvas.height = h = window.innerHeight
+    ctx.font = `${h * 0.157894737}px monospace`
+    ctx.textBaseline = 'hanging'
+    ctx.textAlign = 'center'
+  }
+
+  function getLandmarkProperty(i) {
+    var palms = [0, 1, 2, 5, 9, 13, 17] //landmark indices that represent the palm
+
+    var idx = palms.indexOf(i)
+    var isPalm = idx != -1
+    var next // who to connect with?
+    if (!isPalm) {
+      // connect with previous finger landmark if it's a finger landmark
+      next = i - 1
+    } else {
+      // connect with next palm landmark if it's a palm landmark
+      next = palms[(idx + 1) % palms.length]
+    }
+    return { isPalm, next }
+  }
 
   const loop = (t) => {
     myImage = new Image()
+    // myImage.width = window.innerWidth
 
     ctx.fillStyle = '#000000'
     ctx.globalAlpha = 0.2
@@ -53,8 +100,6 @@ const init = () => {
     myImage.src = images[i]
     imageStartX = pointerX - myImage.width / 2
     imageStartY = pointerY - myImage.width / 2
-
-    // Rotate 1 degree
 
     if (!focusState) {
       //Save the canvas
@@ -85,6 +130,7 @@ const init = () => {
       )
       ctx.restore()
     }
+    
   }
 
   document.addEventListener('keydown', focusOn)
