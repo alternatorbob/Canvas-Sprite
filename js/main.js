@@ -5,21 +5,6 @@ const init = () => {
     canvas = document.getElementsByTagName('canvas').item(0),
     ctx = canvas.getContext('2d')
 
-  const images = [
-    'src/img/Leapfrog_Side/img-001.jpg',
-    'src/img/Leapfrog_Side/img-002.jpg',
-    'src/img/Leapfrog_Side/img-003.jpg',
-    'src/img/Leapfrog_Side/img-004.jpg',
-    'src/img/Leapfrog_Side/img-005.jpg',
-    'src/img/Leapfrog_Side/img-006.jpg',
-    'src/img/Leapfrog_Side/img-007.jpg',
-    'src/img/Leapfrog_Side/img-008.jpg',
-    'src/img/Leapfrog_Side/img-009.jpg',
-    'src/img/Leapfrog_Side/img-010.jpg',
-    'src/img/Leapfrog_Side/img-011.jpg',
-    'src/img/Leapfrog_Side/img-012.jpg',
-  ]
-
   var handposeModel = null // this will be loaded with the handpose model
   var videoDataLoaded = false // is webcam capture ready?
   var statusText = 'Loading handpose model...'
@@ -73,21 +58,20 @@ const init = () => {
     ctx.textAlign = 'center'
   }
 
-  function getLandmarkProperty(i) {
-    var palms = [0, 1, 2, 5, 9, 13, 17] //landmark indices that represent the palm
-
-    var idx = palms.indexOf(i)
-    var isPalm = idx != -1
-    var next // who to connect with?
-    if (!isPalm) {
-      // connect with previous finger landmark if it's a finger landmark
-      next = i - 1
-    } else {
-      // connect with next palm landmark if it's a palm landmark
-      next = palms[(idx + 1) % palms.length]
-    }
-    return { isPalm, next }
-  }
+  const images = [
+    'src/img/Leapfrog_Side/img-001.jpg',
+    'src/img/Leapfrog_Side/img-002.jpg',
+    'src/img/Leapfrog_Side/img-003.jpg',
+    'src/img/Leapfrog_Side/img-004.jpg',
+    'src/img/Leapfrog_Side/img-005.jpg',
+    'src/img/Leapfrog_Side/img-006.jpg',
+    'src/img/Leapfrog_Side/img-007.jpg',
+    'src/img/Leapfrog_Side/img-008.jpg',
+    'src/img/Leapfrog_Side/img-009.jpg',
+    'src/img/Leapfrog_Side/img-010.jpg',
+    'src/img/Leapfrog_Side/img-011.jpg',
+    'src/img/Leapfrog_Side/img-012.jpg',
+  ]  
 
   const loop = (t) => {
     myImage = new Image()
@@ -130,7 +114,6 @@ const init = () => {
       )
       ctx.restore()
     }
-    
   }
 
   document.addEventListener('keydown', focusOn)
