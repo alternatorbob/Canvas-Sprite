@@ -79,7 +79,7 @@ function draw() {
     handposeModel.estimateHands(capture.elt).then(function (_hands) {
       // we're handling an async promise
       // best to avoid drawing something here! it might produce weird results due to racing
-
+      
       myHands = _hands // update the global myHands object with the detected hands
       if (!myHands.length) {
         // haven't found any hands

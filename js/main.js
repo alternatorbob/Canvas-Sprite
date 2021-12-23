@@ -74,20 +74,15 @@ const init = () => {
     ctx.textAlign = 'center'
   }
 
-  function getLandmarkProperty(i) {
-    var palms = [0, 1, 2, 5, 9, 13, 17] //landmark indices that represent the palm
+  function drawHands(hands, noKeypoints) {
+    // Each hand object contains a `landmarks` property,
+    // which is an array of 21 3-D landmarks.
+    for (var i = 0; i < hands.length; i++) {
+      var landmarks = hands[i].landmarks
 
-    var idx = palms.indexOf(i)
-    var isPalm = idx != -1
-    var next // who to connect with?
-    if (!isPalm) {
-      // connect with previous finger landmark if it's a finger landmark
-      next = i - 1
-    } else {
-      // connect with next palm landmark if it's a palm landmark
-      next = palms[(idx + 1) % palms.length]
+      var palms = [0, 1, 2, 5, 9, 13, 17] //landmark indices that represent the palm
+      console.log(landmarks);
     }
-    return { isPalm, next }
   }
 
   const loop = (t) => {
@@ -131,27 +126,7 @@ const init = () => {
       )
       ctx.restore()
     }
-
-    if (handposeModel && videoDataLoaded) {
-      // model and video both loaded,
-
-      handposeModel.estimateHands(capture.elt).then(function (_hands) {
-        // we're handling an async promise
-        // best to avoid drawing something here! it might produce weird results due to racing
-
-        myHands = _hands // update the global myHands object with the detected hands
-        if (!myHands.length) {
-          // haven't found any hands
-          statusText = 'Show some hands!'
-        } else {
-          // display the confidence, to 3 decimal places
-          statusText =
-            'Confidence: ' +
-            Math.round(myHands[0].handInViewConfidence * 1000) / 1000
-        }
-      })
-      drawHands(myHands)
-    }
+    drawHands(myHands)
   }
 
   document.addEventListener('keydown', focusOn)
@@ -175,17 +150,6 @@ const init = () => {
 
       pointerX = e.clientX
       pointerY = e.clientY
-
-      if (e.clientY > pointerPos[0].y + myImage.height / 8) {
-        console.log('true')
-        rotation++
-        // console.log(pointerPos[0].x, 'it works')
-      } else if (e.clientY < pointerPos[0].y - myImage.height / 8) {
-        // console.log('true')
-        // rotation--
-      } else if (e.clientY === pointerPos[0].y) {
-        rotation = 0
-      }
     })
   }
 
@@ -232,6 +196,22 @@ function drawHands(hands, noKeypoints) {
       line(x, y, ...next)
     }
   }
+}
+
+function getLandmarkProperty(i) {
+  var palms = [0, 1, 2, 5, 9, 13, 17] //landmark indices that represent the palm
+
+  var idx = palms.indexOf(i)
+  var isPalm = idx != -1
+  var next // who to connect with?
+  if (!isPalm) {
+    // connect with previous finger landmark if it's a finger landmark
+    next = i - 1
+  } else {
+    // connect with next palm landmark if it's a palm landmark
+    next = palms[(idx + 1) % palms.length]
+  }
+  return { isPalm, next }
 }
 
 window.addEventListener('load', init)
