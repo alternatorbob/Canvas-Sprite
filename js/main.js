@@ -42,6 +42,7 @@ const init = () => {
     console.log('model initialized.')
     statusText = 'Model loaded.'
     handposeModel = _model
+    setInterval(loop, 100)
   })
 
   var capture = document.createElement('video')
@@ -130,7 +131,27 @@ const init = () => {
       )
       ctx.restore()
     }
-    
+
+    if (handposeModel && videoDataLoaded) {
+      // model and video both loaded,
+
+      handposeModel.estimateHands(capture.elt).then(function (_hands) {
+        // we're handling an async promise
+        // best to avoid drawing something here! it might produce weird results due to racing
+
+        myHands = _hands // update the global myHands object with the detected hands
+        if (!myHands.length) {
+          // haven't found any hands
+          statusText = 'Show some hands!'
+        } else {
+          // display the confidence, to 3 decimal places
+          statusText =
+            'Confidence: ' +
+            Math.round(myHands[0].handInViewConfidence * 1000) / 1000
+        }
+      })
+      drawHands(myHands)
+    }
   }
 
   document.addEventListener('keydown', focusOn)
@@ -168,8 +189,6 @@ const init = () => {
     })
   }
 
-  setInterval(loop, 100)
-
   let w,
     h,
     last,
@@ -181,6 +200,38 @@ const init = () => {
   resize()
   html.classList.remove('no-js')
   html.classList.add('js')
+}
+
+function drawHands(hands, noKeypoints) {
+  // Each hand object contains a `landmarks` property,
+  // which is an array of 21 3-D landmarks.
+  for (var i = 0; i < hands.length; i++) {
+    var landmarks = hands[i].landmarks
+
+    var palms = [0, 1, 2, 5, 9, 13, 17] //landmark indices that represent the palm
+    console.log(landmarks)
+    for (var j = 0; j < landmarks.length; j++) {
+      var [x, y, z] = landmarks[j] // coordinate in 3D space
+
+      // draw the keypoint and number
+      if (!noKeypoints) {
+        // rect(x - 2, y - 2, 4, 4)
+        // text(j, x, y)
+      }
+
+      // draw the skeleton
+      var isPalm = palms.indexOf(j) // is it a palm landmark or finger landmark?
+      var next // who to connect with?
+      if (isPalm == -1) {
+        // connect with previous finger landmark if it's a finger landmark
+        next = landmarks[j - 1]
+      } else {
+        // connect with next palm landmark if it's a palm landmark
+        next = landmarks[palms[(isPalm + 1) % palms.length]]
+      }
+      line(x, y, ...next)
+    }
+  }
 }
 
 window.addEventListener('load', init)
