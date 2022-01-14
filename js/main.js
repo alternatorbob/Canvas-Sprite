@@ -1,11 +1,18 @@
 'use strict'
+import { setupWebcam, SmoothPos, map } from './utils.js'
+import HandPose from './handPose.js'
+import Sequence from './sequence.js'
+import Hand from './hand.js'
 
-const init = () => {
-  const html = document.getElementsByTagName('html').item(0),
-    canvas = document.getElementsByTagName('canvas').item(0),
-    ctx = canvas.getContext('2d')
+const mirrored = true
 
-  const images = [
+const init = async () => {
+  const canvas = document.querySelector('#main-canvas')
+  if (mirrored) document.body.classList.add('--mirrored')
+
+  const ctx = canvas.getContext('2d')
+
+  const sequence = await Sequence.preload([
     'src/img/Leapfrog_Side/img-001.jpg',
     'src/img/Leapfrog_Side/img-002.jpg',
     'src/img/Leapfrog_Side/img-003.jpg',
@@ -18,14 +25,14 @@ const init = () => {
     'src/img/Leapfrog_Side/img-010.jpg',
     'src/img/Leapfrog_Side/img-011.jpg',
     'src/img/Leapfrog_Side/img-012.jpg',
-  ]
+  ])
 
-  var handposeModel = null // this will be loaded with the handpose model
-  var videoDataLoaded = false // is webcam capture ready?
-  var statusText = 'Loading handpose model...'
-  var myHands = [] // hands detected by mediapipe
-  var capture // webcam capture, managed by p5.js
+  let handposeModel = null // this will be loaded with the handpose model
+  let videoDataLoaded = false // is webcam capture ready?
+  const myHands = [] // hands detected by mediapipe
+  let capture // webcam capture, managed by p5.js
 
+  const smoother = new SmoothPos({ x: 0, y: 0, smooth: 0.1 })
   let pointerX,
     pointerY,
     pointerStartX,
@@ -36,97 +43,105 @@ const init = () => {
   let rotation = 0
   let myImage
   let focusState = false
-  let pointerPos = []
 
-  handpose.load().then(function (_model) {
-    console.log('model initialized.')
-    statusText = 'Model loaded.'
-    handposeModel = _model
-    setInterval(loop, 100)
-  })
+  const pointerPos = []
+  const handDetection = new HandPose()
+  await handDetection.init()
+  const hand = new Hand()
 
-  var capture = document.createElement('video')
-  capture.playsinline = 'playsinline'
-  capture.autoplay = 'autoplay'
-  navigator.mediaDevices
-    .getUserMedia({ audio: false, video: true })
-    .then(function (stream) {
-      window.stream = stream
-      capture.srcObject = stream
-    })
+  const oldSnap = [0, 0]
 
-  // hide the video element
-  capture.style.position = 'absolute'
-  capture.style.opacity = 0
-  capture.style.zIndex = -100 // "send to back"
-
-  // signal when capture is ready and set size for debug canvas
-  capture.onloadeddata = function () {
-    console.log('video initialized')
-    videoDataLoaded = true
+  handDetection.onDetection = (hands) => {
+    const [firstHand] = hands
+    const { width, height } = ctx.canvas
+    hand.update(handDetection.fillPose(firstHand, width, height))
   }
 
-  const resize = () => {
+  loop()
+
+  function resize() {
     canvas.width = w = window.innerWidth
     canvas.height = h = window.innerHeight
     ctx.font = `${h * 0.157894737}px monospace`
     ctx.textBaseline = 'hanging'
     ctx.textAlign = 'center'
+    ctx.fillStyle = 'black'
+    // ctx.fillRect(0, 0, canvas.width, canvas.height)
   }
 
-  function drawHands(hands, noKeypoints) {
-    // Each hand object contains a `landmarks` property,
-    // which is an array of 21 3-D landmarks.
-    for (var i = 0; i < hands.length; i++) {
-      var landmarks = hands[i].landmarks
+  // function drawHands(hands, noKeypoints) {
+  //   // Each hand object contains a `landmarks` property,
+  //   // which is an array of 21 3-D landmarks.
+  //   for (let i = 0; i < hands.length; i++) {
+  //     let landmarks = hands[i].landmarks
 
-      var palms = [0, 1, 2, 5, 9, 13, 17] //landmark indices that represent the palm
-      console.log(landmarks);
+  //     let palms = [0, 1, 2, 5, 9, 13, 17] //landmark indices that represent the palm
+  //     console.log(landmarks)
+  //   }
+  // }
+
+  function loop(t) {
+    const { width, height } = ctx.canvas
+
+    if (hand.isShown) {
+      smoother.follow(...hand.getCenter(ctx, false))
     }
-  }
 
-  const loop = (t) => {
-    myImage = new Image()
+    const [centerX, centerY] = smoother.update()
+    ctx.beginPath()
+    ctx.arc(centerX, centerY, 10, 0, 2 * Math.PI)
+    ctx.fill()
+
     // myImage.width = window.innerWidth
 
-    ctx.fillStyle = '#000000'
-    ctx.globalAlpha = 0.2
-    ctx.fillRect(0, 0, w, h)
-    ctx.globalAlpha = 1.0
-    myImage.src = images[i]
-    imageStartX = pointerX - myImage.width / 2
-    imageStartY = pointerY - myImage.width / 2
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.1)'
+    ctx.fillRect(0, 0, width, height)
 
-    if (!focusState) {
-      //Save the canvas
-      ctx.save()
-      ctx.rotate((rotation * Math.PI) / 180)
-      ctx.drawImage(
-        myImage,
-        Math.floor((pointerX - myImage.width / 2) / myImage.width) *
-          myImage.width,
-        pointerY - myImage.height / 2
-      )
-      ctx.restore()
+    const frame = sequence.getFrame()
+    const columnWidth = frame.width
+    const snapX =
+      Math.floor(map(centerX, 0, width, 0, width / columnWidth)) * columnWidth
 
-      i++
-      if (i == images.length) i = 0
-      last = t
-      pointerControl()
-      // console.log(pointerPos)
-    } else {
-      ctx.save()
-      ctx.drawImage(
-        myImage,
-        Math.floor((pointerX - myImage.width / 2) / myImage.width) *
-          myImage.width,
-        pointerY - myImage.height / 2,
-        myImage.width * 2,
-        myImage.height * 2
-      )
-      ctx.restore()
+    if (snapX > oldSnap[0]) {
+      sequence.nextFrame()
+    } else if (snapX < oldSnap[0]) {
+      sequence.previousFrame()
     }
-    drawHands(myHands)
+
+    oldSnap[0] = snapX
+
+    sequence.draw(ctx, { x: snapX, y: centerY })
+
+    requestAnimationFrame(loop)
+    // if (!focusState) {
+    //   //Save the canvas
+    //   ctx.save()
+    //   ctx.rotate((rotation * Math.PI) / 180)
+    //   ctx.drawImage(
+    //     myImage,
+    //     Math.floor((pointerX - myImage.width / 2) / myImage.width) *
+    //       myImage.width,
+    //     pointerY - myImage.height / 2
+    //   )
+    //   ctx.restore()
+
+    //   i++
+    //   if (i == images.length) i = 0
+    //   last = t
+    //   pointerControl()
+    //   // console.log(pointerPos)
+    // } else {
+    //   ctx.save()
+    //   ctx.drawImage(
+    //     myImage,
+    //     Math.floor((pointerX - myImage.width / 2) / myImage.width) *
+    //       myImage.width,
+    //     pointerY - myImage.height / 2,
+    //     myImage.width * 2,
+    //     myImage.height * 2
+    //   )
+    //   ctx.restore()
+    // }
   }
 
   document.addEventListener('keydown', focusOn)
@@ -162,56 +177,22 @@ const init = () => {
   window.removeEventListener('load', init)
   window.addEventListener('resize', resize)
   resize()
-  html.classList.remove('no-js')
-  html.classList.add('js')
 }
 
-function drawHands(hands, noKeypoints) {
-  // Each hand object contains a `landmarks` property,
-  // which is an array of 21 3-D landmarks.
-  for (var i = 0; i < hands.length; i++) {
-    var landmarks = hands[i].landmarks
+// function getLandmarkProperty(i) {
+//   let palms = [0, 1, 2, 5, 9, 13, 17] //landmark indices that represent the palm
 
-    var palms = [0, 1, 2, 5, 9, 13, 17] //landmark indices that represent the palm
-    console.log(landmarks)
-    for (var j = 0; j < landmarks.length; j++) {
-      var [x, y, z] = landmarks[j] // coordinate in 3D space
-
-      // draw the keypoint and number
-      if (!noKeypoints) {
-        // rect(x - 2, y - 2, 4, 4)
-        // text(j, x, y)
-      }
-
-      // draw the skeleton
-      var isPalm = palms.indexOf(j) // is it a palm landmark or finger landmark?
-      var next // who to connect with?
-      if (isPalm == -1) {
-        // connect with previous finger landmark if it's a finger landmark
-        next = landmarks[j - 1]
-      } else {
-        // connect with next palm landmark if it's a palm landmark
-        next = landmarks[palms[(isPalm + 1) % palms.length]]
-      }
-      line(x, y, ...next)
-    }
-  }
-}
-
-function getLandmarkProperty(i) {
-  var palms = [0, 1, 2, 5, 9, 13, 17] //landmark indices that represent the palm
-
-  var idx = palms.indexOf(i)
-  var isPalm = idx != -1
-  var next // who to connect with?
-  if (!isPalm) {
-    // connect with previous finger landmark if it's a finger landmark
-    next = i - 1
-  } else {
-    // connect with next palm landmark if it's a palm landmark
-    next = palms[(idx + 1) % palms.length]
-  }
-  return { isPalm, next }
-}
+//   let idx = palms.indexOf(i)
+//   let isPalm = idx != -1
+//   let next // who to connect with?
+//   if (!isPalm) {
+//     // connect with previous finger landmark if it's a finger landmark
+//     next = i - 1
+//   } else {
+//     // connect with next palm landmark if it's a palm landmark
+//     next = palms[(idx + 1) % palms.length]
+//   }
+//   return { isPalm, next }
+// }
 
 window.addEventListener('load', init)
