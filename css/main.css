@@ -11,3 +11,7 @@
 .--mirrored {
   transform: scaleX(-1);
 }
+
+body {
+  cursor: none;
+}

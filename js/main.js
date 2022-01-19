@@ -32,7 +32,7 @@ const init = async () => {
   const myHands = [] // hands detected by mediapipe
   let capture // webcam capture, managed by p5.js
 
-  const smoother = new SmoothPos({ x: 0, y: 0, smooth: .1 })
+  const smoother = new SmoothPos({ x: 0, y: 0, smooth: .3 })
   let pointerX,
     pointerY,
     pointerStartX,
